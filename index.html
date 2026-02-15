@@ -7,10 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- إضافة مكتبة SheetJS لتصدير ملفات Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
     <style>
         body { font-family: 'Tajawal', sans-serif; background-color: #f8fafc; color: #1e293b; }
         
-        /* تعريف الألوان الجديدة بناءً على الطلب */
         .color-pink { border-color: #f472b6 !important; background-color: #fdf2f8; }
         .color-black { border-color: #1e293b !important; background-color: #f8fafc; }
         .color-blue { border-color: #3b82f6 !important; background-color: #eff6ff; }
@@ -87,13 +89,24 @@
     <header class="bg-white shadow-sm border-b sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">~~~</div>
-                <h1 class="text-xl font-bold text-slate-800">نظام الحضور والفعالية</h1>
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">A</div>
+                <h1 class="text-xl font-bold text-slate-800 hidden md:block">نظام الحضور والفعالية</h1>
             </div>
-            <div class="relative w-full max-w-md mr-4">
-                <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="بحث عن اسم الموظف..." 
-                       class="w-full bg-slate-100 border-none rounded-2xl py-2 px-5 pr-12 focus:ring-2 focus:ring-blue-400 outline-none text-right">
-                <div id="searchResults" class="absolute top-full mt-2 left-0 right-0 bg-white shadow-2xl rounded-2xl overflow-hidden hidden max-h-80 overflow-y-auto z-50 text-right"></div>
+            
+            <div class="flex items-center gap-3 flex-1 justify-end">
+                <!-- زر تصدير الإكسيل الجديد -->
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    تصدير Excel
+                </button>
+
+                <div class="relative w-full max-w-xs md:max-w-md">
+                    <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="بحث عن اسم الموظف..." 
+                           class="w-full bg-slate-100 border-none rounded-2xl py-2 px-5 pr-12 focus:ring-2 focus:ring-blue-400 outline-none text-right text-sm">
+                    <div id="searchResults" class="absolute top-full mt-2 left-0 right-0 bg-white shadow-2xl rounded-2xl overflow-hidden hidden max-h-80 overflow-y-auto z-50 text-right"></div>
+                </div>
             </div>
         </div>
     </header>
@@ -101,7 +114,7 @@
     <main class="max-w-[1300px] mx-auto px-4 mt-10">
         <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
             <span class="w-2 h-6 bg-blue-500 rounded-full"></span>
-            خريطة القاعة 
+            خريطة القاعة
         </h2>
         <div id="tablesGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-16">
             <!-- سيتم ملؤها بواسطة JS -->
@@ -120,7 +133,6 @@
         let tables = [];
         let attendance = {};
 
-        // مجموعات الألوان الجديدة
         const colorGroups = {
             pink: [1, 6, 5, 19, 13],
             black: [3, 10, 7, 17, 12],
@@ -150,33 +162,33 @@
                 { id: 3, name: "الماركات", members: [
                     { name: "عماد جابر", title: "الماركات", gift: false },
                     { name: "رائف ابو المعاطي محمد سليمان", title: "مشرف مبيعات", gift: true },
-                    { name: "اسعد محمد محمد عبدالسلام", title: "مدير منطقة", gift: true },
+                    { name: "هاني محمد عادل إبراهيم", title: "مشرف مبيعات", gift: true },
                     { name: "احمد محمد ابو الخير عبدالفتاح", title: "مشرف مبيعات", gift: true },
                     { name: "احمد علم", title: "مدير منطقة", gift: true }
                 ]},
-                 { id: 4, name: "طاولة 4", members: [
-                    { name: "محمد دللول", title: "مدير مبيعات إقليمي", gift: true },
-                    { name: "رضوان سيف الدين عبدالسلام شرف الدين", title: "مشرف مبيعات", gift: true },
-                    { name: "عماد محمد شاكر حسين", title: "مشرف مبيعات", gift: true },
-                    { name: "جلال رجب عبدالعزيز عثمان", title: "مشرف مبيعات", gift: true },
-                    { name: "محمد إبراهيم محمد الدبس", title: "مشرف مبيعات", gift: true },
+                { id: 4, name: "طاولة 4", members: [
+                    { name: "وسيم يوسف نجمه", title: "مدير مبيعات إقليمي", gift: true },
+                    { name: "اشرف رجب محمد عبداللطيف", title: "مشرف مبيعات", gift: true },
+                    { name: "محمود هاشم محمد خطاب", title: "مشرف مبيعات", gift: true },
+                    { name: "محمد عزت حنفي عبدالرحمن", title: "مشرف مبيعات", gift: true },
+                    { name: "احمد أبو هشيمة عبدالستار عبداللطيف", title: "مدير منطقة", gift: true }
                 ]},
                 { id: 5, name: "طاولة 5", members: [
-                    { name: "محمد الطوخي - مدير إقليم الخليج", title: "مدير مبيعات إقليمي", gift: true },
-                    { name: "احمد حمدي احمد شلبي", title: "مدير منطقة", gift: true },
-		        { name: "محمد عبد الوهاب", title: "مكتب الرئيس التنفيذي", gift: false },
-                    { name: "عبدالله احمد محسن الحسيكى الحارثى", title: "مشرف مبيعات", gift: true },
-                    { name: "أحمد محمد السيد عبدالمؤمن عبدالحميد", title: "مشرف مبيعات", gift: true }
+                    { name: "سليمان حمدي", title: "مدير مبيعات إقليمي", gift: true },
+                    { name: "محمود محمد رياض علي", title: "مشرف مبيعات", gift: true },
+                    { name: "حماده حسين محمد عبدالغني", title: "مشرف مبيعات", gift: true },
+                    { name: "احمد محمد علي محمد", title: "مشرف مبيعات", gift: true },
+                    { name: "محمد السعيد محمد السيد", title: "مشرف مبيعات", gift: true }
                 ]},
                 { id: 6, name: "طاولة 6", members: [
-                    { name: "حسام البني", title: "مدير مبيعات إقليمي", gift: true },
-                    { name: "حازم عدلي فرج وشاحي", title: "مشرف مبيعات", gift: true },
-                    { name: "احمد رمضان حسن بدر", title: "مشرف مبيعات", gift: true },
-                    { name: "احمد ابراهيم عبداللطيف ابو الحمد", title: "مدير منطقة", gift: true },
-                    { name: "هشام جمال عبدالعليم السيد", title: "مشرف مبيعات", gift: true }
+                    { name: "شريف محمد عبدالفتاح", title: "مشرف مبيعات", gift: true },
+                    { name: "هلال صادق احمد عبدالله", title: "مشرف مبيعات", gift: true },
+                    { name: "انس محمد منصور حميد", title: "مشرف مبيعات", gift: true },
+                    { name: "سعد محمد احمد حسين", title: "مشرف مبيعات", gift: true },
+                    { name: "اشرف البركي", title: "مدير مبيعات إقليمي", gift: true }
                 ]},
                 { id: 7, name: "طاولة 7", members: [
-                    { name: "سليمان حمدي", title: "مدير مبيعات إقليمي", gift: true },
+                    { name: "عادل السيد السحراوي", title: "مدير مبيعات إقليمي", gift: true },
                     { name: "مبارك جمال جلال سليمان", title: "مشرف مبيعات", gift: true },
                     { name: "عماد عبدة قايد مصلح", title: "مشرف مبيعات", gift: true },
                     { name: "احمد محمد محمد الجمل", title: "مشرف مبيعات", gift: true },
@@ -198,25 +210,25 @@
                 ]},
                 { id: 10, name: "طاولة 10", members: [
                     { name: "إبراهيم مساعد مسعود", title: "مدير مبيعات إقليمي", gift: true },
-                    { name: "هاني محمد عادل إبراهيم", title: "مشرف مبيعات", gift: true },
+                    { name: "اسعد محمد محمد عبدالسلام", title: "مدير منطقة", gift: true },
                     { name: "خالد سالم عبدالله الصبحي", title: "مشرف مبيعات", gift: true },
                     { name: "محمد رمضان علي محمد", title: "مشرف مبيعات", gift: true },
                     { name: "احمد سعيد علي عبدالعزيز", title: "مشرف مبيعات", gift: true }
                 ]},
-		{ id: 11, name: "طاولة 11", members: [
-                    { name: "وسيم يوسف نجمه", title: "مدير مبيعات إقليمي", gift: true },
-                    { name: "اشرف رجب محمد عبداللطيف", title: "مشرف مبيعات", gift: true },
-                    { name: "محمود هاشم محمد خطاب", title: "مشرف مبيعات", gift: true },
-                    { name: "محمد عزت حنفي عبدالرحمن", title: "مشرف مبيعات", gift: true },
-                    { name: "احمد أبو هشيمة عبدالستار عبداللطيف", title: "مدير منطقة", gift: true }
+                { id: 11, name: "طاولة 11", members: [
+                    { name: "محمد دللول", title: "مدير مبيعات إقليمي", gift: true },
+                    { name: "رضوان سيف الدين عبدالسلام شرف الدين", title: "مشرف مبيعات", gift: true },
+                    { name: "عماد محمد شاكر حسين", title: "مشرف مبيعات", gift: true },
+                    { name: "جلال رجب عبدالعزيز عثمان", title: "مشرف مبيعات", gift: true },
+                    { name: "محمد إبراهيم محمد الدبس", title: "مشرف مبيعات", gift: true },
+                    { name: "عمرو عاطف", title: "مدير منطقة", gift: true }
                 ]},
                 { id: 12, name: "طاولة 12", members: [
-                    { name: "عادل السيد السحراوي", title: "مدير مبيعات إقليمي", gift: true },
-                    { name: "محمود محمد رياض علي", title: "مشرف مبيعات", gift: true },
-                    { name: "حماده حسين محمد عبدالغني", title: "مشرف مبيعات", gift: true },
-                    { name: "احمد محمد علي محمد", title: "مشرف مبيعات", gift: true },
-                    { name: "محمد السعيد محمد السيد", title: "مشرف مبيعات", gift: true },
-		        { name: "عمرو عاطف", title: "مدير منطقة ", gift: true }
+                    { name: "محمد الطوخي - مدير إقليم الخليج", title: "مدير مبيعات إقليمي", gift: true },
+                    { name: "احمد حمدي احمد شلبي", title: "مدير منطقة", gift: true },
+                    { name: "ليلى يحي عيسى سفران", title: "مشرف مبيعات", gift: true },
+                    { name: "عبدالله احمد محسن الحسيكى الحارثى", title: "مشرف مبيعات", gift: true },
+                    { name: "أحمد محمد السيد عبدالمؤمن عبدالحميد", title: "مشرف مبيعات", gift: true }
                 ]},
                 { id: 13, name: "طاولة 13", members: [
                     { name: "وحيد حامد", title: "مدير مبيعات إقليمي", gift: true },
@@ -226,11 +238,11 @@
                     { name: "محمد احمد محمد جاد", title: "مشرف مبيعات", gift: true }
                 ]},
                 { id: 14, name: "طاولة 14", members: [
-                    { name: "شريف محمد عبدالفتاح", title: "مشرف مبيعات", gift: true },
-                    { name: "هلال صادق احمد عبدالله", title: "مشرف مبيعات", gift: true },
-                    { name: "انس محمد منصور حميد", title: "مشرف مبيعات", gift: true },
-                    { name: "سعد محمد احمد حسين", title: "مشرف مبيعات", gift: true },
-                    { name: "اشرف البركي", title: "مدير مبيعات إقليمي", gift: true }
+                    { name: "حسام البني", title: "مدير مبيعات إقليمي", gift: true },
+                    { name: "حازم عدلي فرج وشاحي", title: "مشرف مبيعات", gift: true },
+                    { name: "احمد رمضان حسن بدر", title: "مشرف مبيعات", gift: true },
+                    { name: "احمد ابراهيم عبداللطيف ابو الحمد", title: "مدير منطقة", gift: true },
+                    { name: "هشام جمال عبدالعليم السيد", title: "مشرف مبيعات", gift: true }
                 ]},
                 { id: 15, name: "طاولة 15", members: [
                     { name: "زكي سريه", title: "مدير مبيعات إقليمي", gift: true },
@@ -254,16 +266,15 @@
                     { name: "محمود عباس حسن بلال", title: "مدير منطقة", gift: true }
                 ]},
                 { id: 18, name: "طاولة 18", members: [
-                    { name: "فيصل احمد علي", title: "مدير منطقة (صعوبة إصدار التأشيرة)", gift: true },
+                    { name: "فيصل احمد علي", title: "مدير منطقة", gift: true },
                     { name: "علي احمد عيدروس علي", title: "مشرف مبيعات", gift: true },
                     { name: "رشدي محمد سعيد حسن", title: "مشرف مبيعات", gift: true },
                     { name: "وضاح الفهد", title: "مدير منطقة", gift: true },
                     { name: "احمد سامي محمد عصر", title: "مشرف مبيعات", gift: true },
-		        { name: "شادي عواد", title: "مدير منطقة (إجازة)", gift: true }
-                    
+                    { name: "محمد عبد الوهاب", title: "مكتب الرئيس التنفيذي", gift: false }
                 ]},
                 { id: 19, name: "طاولة السيدات", members: [
-                    { name: "ليلى يحي عيسى سفران", title: "مشرف مبيعات", gift: true },
+                    { name: "شادي عواد", title: "مدير منطقة", gift: true },
                     { name: "وعد الزهراني", title: "مدربة", gift: true },
                     { name: "زهراء ابراهيم ال عبيد", title: "مدربة", gift: true },
                     { name: "اسماء محمد ناصر زقاف", title: "مشرف مبيعات", gift: true },
@@ -468,46 +479,80 @@
             });
         }
 
+        /**
+         * وظيفة تصدير البيانات إلى Excel
+         */
+        function exportToExcel() {
+            // 1. تجهيز بيانات كشف الحضور التفصيلي
+            const detailData = [];
+            let totalAttended = 0;
+            let totalStaff = 0;
+
+            tables.forEach(table => {
+                table.members.forEach(m => {
+                    const isAttended = attendance[m.name] || false;
+                    detailData.push({
+                        'اسم الموظف': m.name,
+                        'المسمى الوظيفي': m.title || 'موظف',
+                        'رقم الطاولة': table.id,
+                        'اسم الطاولة': table.name,
+                        'حالة الحضور': isAttended ? 'حضر' : 'لم يحضر'
+                    });
+                    totalStaff++;
+                    if (isAttended) totalAttended++;
+                });
+            });
+
+            // 2. تجهيز بيانات ملخص الطاولات
+            const summaryData = tables.map(table => {
+                const attendedCount = table.members.filter(m => attendance[m.name]).length;
+                return {
+                    'رقم الطاولة': table.id,
+                    'اسم الطاولة': table.name,
+                    'عدد الموظفين': table.members.length,
+                    'عدد الحضور': attendedCount,
+                    'عدد الغياب': table.members.length - attendedCount,
+                    'نسبة الحضور': table.members.length > 0 ? ((attendedCount / table.members.length) * 100).toFixed(1) + '%' : '0%'
+                };
+            });
+
+            // إضافة سطر الإجمالي في الملخص
+            summaryData.push({
+                'رقم الطاولة': 'الإجمالي العام',
+                'اسم الطاولة': '-',
+                'عدد الموظفين': totalStaff,
+                'عدد الحضور': totalAttended,
+                'عدد الغياب': totalStaff - totalAttended,
+                'نسبة الحضور': totalStaff > 0 ? ((totalAttended / totalStaff) * 100).toFixed(1) + '%' : '0%'
+            });
+
+            // 3. إنشاء كتاب عمل جديد (Workbook)
+            const wb = XLSX.utils.book_new();
+
+            // 4. إنشاء ورقة التفاصيل وتحويلها لـ Sheet
+            const wsDetail = XLSX.utils.json_to_sheet(detailData);
+            XLSX.utils.book_append_sheet(wb, wsDetail, "كشف الحضور التفصيلي");
+
+            // 5. إنشاء ورقة الملخص وتحويلها لـ Sheet
+            const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص الحضور");
+
+            // 6. تحميل الملف
+            const dateStr = new Date().toLocaleDateString('ar-SA').replace(/\//g, '-');
+            XLSX.writeFile(wb, `تقرير_حضور_الفعالية_${dateStr}.xlsx`);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'تم التصدير بنجاح',
+                text: 'تم تحميل ملف التقرير على جهازك',
+                confirmButtonColor: '#22c55e'
+            });
+        }
+
         window.onload = () => {
             createTables();
             renderUI();
         };
-
     </script>
-<!-- LEGEND: مفتاح الألوان مع أرقام الطاولات -->
-<div id="colorLegend" class="flex flex-wrap gap-6 mt-8 justify-center items-center"></div>
-
-<script>
-    const colorGroupsDisplay = {
-        pink: { label: 'بينك', colorClass: 'color-pink' },
-        black: { label: 'أسود', colorClass: 'color-black' },
-        blue: { label: 'أزرق', colorClass: 'color-blue' },
-        green: { label: 'أخضر', colorClass: 'color-green' }
-    };
-
-    function renderColorLegend() {
-        const legend = document.getElementById('colorLegend');
-        legend.innerHTML = ''; // تفريغ أي محتوى قديم
-
-        for (const [key, data] of Object.entries(colorGroupsDisplay)) {
-            const tables = colorGroups[key].join(' – '); // الأرقام
-            const div = document.createElement('div');
-            div.className = 'flex items-center gap-2';
-            div.innerHTML = `
-                <div class="w-6 h-6 rounded-full ${data.colorClass} border-2 border-current"></div>
-                <span class="text-slate-700 text-sm">${data.label} (${colorGroups[key].length}): ${tables}</span>
-            `;
-            legend.appendChild(div);
-        }
-    }
-
-    // استدعاء الدالة بعد إنشاء الطاولات
-    window.onload = () => {
-        createTables();
-        renderUI();
-        renderColorLegend(); // إضافة المفتاح بعد رسم الطاولات
-    };
-</script>
-
 </body>
 </html>
