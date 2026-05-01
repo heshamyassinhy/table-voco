@@ -573,7 +573,12 @@
                     delete t._rawNames;
                     delete t._rawTitles;
                 } else if (t.guests) {
-                    parsedGuests = t.guests.filter(g => !g.isEmpty);
+                    // *** الحفاظ على حالة الاستثناء من الهدية في حال عدم تعديل مربع النصوص ***
+                    parsedGuests = t.guests.filter(g => !g.isEmpty).map(g => ({
+                        name: g.name,
+                        title: g.title,
+                        giftExcluded: g.giftExcluded // نقل الحالة القديمة
+                    }));
                 }
 
                 let requiredSeats = parseInt(t.seatsCount) || parsedGuests.length;
@@ -591,9 +596,11 @@
                 t.guests = finalGuests.map((gData, gIndex) => {
                     let guestName = gData.name;
                     let title = gData.title;
-                    let excludeGift = false;
+                    // الاعتماد على الحالة القديمة أولاً (في حال لم يتم التعديل)
+                    let excludeGift = gData.giftExcluded || false;
                     let isEmp = gData.isEmpty || false;
 
+                    // فحص النص الجديد في حال تم تعديل المربع
                     if(!isEmp && guestName.endsWith('-')) {
                         excludeGift = true;
                         guestName = guestName.slice(0, -1).trim();
