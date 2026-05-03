@@ -76,10 +76,27 @@
                 <!-- Days will be generated here -->
             </div>
 
-            <button onclick="openCreateDay()" class="group relative px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all duration-200 overflow-hidden text-lg">
-                <span class="relative z-10"><i class="fa-solid fa-calendar-plus ml-2"></i> إضافة يوم جديد</span>
-                <div class="absolute inset-0 h-full w-0 bg-white/20 transition-all duration-300 ease-out group-hover:w-full z-0"></div>
-            </button>
+            <div class="flex flex-col items-center gap-4 w-full">
+                <button onclick="openCreateDay()" class="group relative px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all duration-200 overflow-hidden text-lg">
+                    <span class="relative z-10"><i class="fa-solid fa-calendar-plus ml-2"></i> إضافة يوم جديد</span>
+                    <div class="absolute inset-0 h-full w-0 bg-white/20 transition-all duration-300 ease-out group-hover:w-full z-0"></div>
+                </button>
+
+                <!-- أزرار النسخ الاحتياطي ونقل البيانات -->
+                <div class="flex flex-wrap justify-center gap-4 mt-6 p-4 bg-gray-100 rounded-2xl border border-gray-200 w-full max-w-2xl">
+                    <div class="w-full text-center mb-2">
+                        <p class="text-sm text-gray-600 font-bold"><i class="fa-solid fa-cloud-arrow-down mr-1"></i> هل تريد نقل عملك لجهاز آخر (PC آخر)؟</p>
+                    </div>
+                    <button onclick="exportBackup()" class="px-5 py-2.5 bg-white text-gray-700 border-2 border-gray-200 font-bold rounded-xl shadow-sm hover:border-primary hover:text-primary transition-all flex items-center gap-2 text-sm flex-1 justify-center">
+                        <i class="fa-solid fa-download text-primary"></i> 1. حفظ ملف النظام
+                    </button>
+                    <button onclick="document.getElementById('import-file').click()" class="px-5 py-2.5 bg-white text-gray-700 border-2 border-gray-200 font-bold rounded-xl shadow-sm hover:border-success hover:text-success transition-all flex items-center gap-2 text-sm flex-1 justify-center">
+                        <i class="fa-solid fa-upload text-success"></i> 2. رفع ملف النظام هنا
+                    </button>
+                    <!-- ملف مخفي لاستيراد البيانات -->
+                    <input type="file" id="import-file" accept=".json" class="hidden" onchange="importBackup(event)">
+                </div>
+            </div>
         </div>
 
         <!-- ======================= 2. صفحة إعداد اليوم والطاولات ======================= -->
@@ -156,7 +173,7 @@
                 </div>
 
                 <div class="flex gap-2">
-                    <button onclick="exportToExcel()" class="px-4 py-2 bg-success text-white rounded-lg hover:bg-green-600 font-bold transition shadow-sm text-sm" title="تصدير للإكسيل"><i class="fa-solid fa-file-excel ml-1"></i> تصدير</button>
+                    <button onclick="exportToExcel()" class="px-4 py-2 bg-success text-white rounded-lg hover:bg-green-600 font-bold transition shadow-sm text-sm" title="تصدير للإكسيل"><i class="fa-solid fa-file-excel ml-1"></i> تصدير تقرير</button>
                     <button onclick="editCurrentEvent()" class="px-4 py-2 bg-warning text-white rounded-lg hover:bg-yellow-500 font-bold transition shadow-sm text-sm" title="تعديل"><i class="fa-solid fa-pen ml-1"></i> تعديل</button>
                     <button onclick="switchView('view-home')" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition shadow-sm text-sm" title="عودة للرئيسية"><i class="fa-solid fa-home"></i></button>
                     <button onclick="confirmDelete()" class="px-4 py-2 bg-danger text-white rounded-lg hover:bg-red-700 font-bold transition shadow-sm text-sm" title="حذف اليوم"><i class="fa-solid fa-trash"></i></button>
@@ -1175,6 +1192,60 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        // ======================= Backup and Restore (Import/Export State) =======================
+        function exportBackup() {
+            if (events.length === 0) {
+                alert("لا توجد بيانات لنسخها حالياً.");
+                return;
+            }
+            const dataStr = JSON.stringify(events);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            
+            // Generate filename with date
+            const dateStr = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+            link.setAttribute("download", `نسخة_نظام_الحفلات_${dateStr}.json`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        // دمج البيانات المستوردة مع الحالية
+                        importedData.forEach(importedEvent => {
+                            const existingIndex = events.findIndex(ev => ev.id === importedEvent.id);
+                            if (existingIndex > -1) {
+                                events[existingIndex] = importedEvent; // تحديث الحدث الموجود
+                            } else {
+                                events.push(importedEvent); // إضافة الحدث الجديد
+                            }
+                        });
+                        saveData();
+                        renderHome();
+                        alert("تم استيراد ورفع البيانات بنجاح! \nتم إضافة/تحديث الفعاليات على هذا الجهاز.");
+                    } else {
+                        alert("عذراً، ملف البيانات غير صالح.");
+                    }
+                } catch (err) {
+                    alert("حدث خطأ أثناء قراءة الملف. يرجى التأكد من اختيار ملف النسخة الاحتياطية الصحيح (.json).");
+                    console.error(err);
+                }
+                event.target.value = ''; // Reset file input
+            };
+            reader.readAsText(file);
         }
 
         window.onload = () => { renderHome(); };
