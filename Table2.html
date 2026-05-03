@@ -22,7 +22,8 @@
         .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
         
         /* خريطة الطاولات */
-        #map-container { position: relative; width: 100%; height: 600px; background: #e2e8f0; border-radius: 1rem; overflow: hidden; border: 2px dashed #cbd5e1; }
+        /* تمت إضافة resize: vertical لتسمح للمستخدم بسحب الخريطة لأسفل وتكبيرها */
+        #map-container { position: relative; width: 100%; height: 800px; min-height: 500px; resize: vertical; background: #e2e8f0; border-radius: 1rem; overflow: hidden; border: 2px dashed #cbd5e1; }
         .table-group { position: absolute; cursor: pointer; user-select: none; z-index: 10; transition: transform 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .table-group:active { z-index: 50; }
         .table-center { display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: white; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); position: relative; z-index: 2; border: 4px solid rgba(255,255,255,0.3); transition: all 0.3s ease;}
@@ -164,7 +165,10 @@
 
             <!-- Visual Map -->
             <div class="mb-2 flex justify-between items-end bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="font-bold text-gray-700"><i class="fa-solid fa-map text-primary ml-1"></i> خريطة القاعة (اسحب للترتيب)</h3>
+                <div class="flex flex-col">
+                    <h3 class="font-bold text-gray-700"><i class="fa-solid fa-map text-primary ml-1"></i> خريطة القاعة (اسحب للترتيب)</h3>
+                    <span class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-arrows-up-down text-gray-300 ml-1"></i> يمكنك سحب الزاوية السفلية للخريطة لتكبير المساحة بحرية.</span>
+                </div>
                 
                 <!-- زر تفعيل وضع التحريك -->
                 <label class="flex items-center cursor-pointer bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
@@ -365,11 +369,13 @@
         }
 
         // ======================= 2. Setup/Edit View Logic =======================
+        // تم إضافة اللون الأصفر للقائمة
         const colors = [
             {name: 'أسود', val: '#1e293b'}, {name: 'أحمر', val: '#dc2626'}, 
             {name: 'أخضر', val: '#16a34a'}, {name: 'أزرق', val: '#2563eb'},
-            {name: 'بنفسجي', val: '#9333ea'}, {name: 'برتقالي', val: '#ea580c'},
-            {name: 'ذهبي', val: '#ca8a04'}, {name: 'وردي', val: '#db2777'}
+            {name: 'بنفسجي', val: '#9333ea'}, {name: 'أصفر', val: '#eab308'}, 
+            {name: 'برتقالي', val: '#ea580c'}, {name: 'ذهبي', val: '#ca8a04'}, 
+            {name: 'وردي', val: '#db2777'}
         ];
 
         // قائمة أشكال الطاولات/التخطيط
@@ -411,6 +417,7 @@
 
             tempTables = JSON.parse(JSON.stringify(currentEvent.tables)); // deep copy
             tempTables.forEach(t => {
+                if(!t.customName) t.customName = t.number.toString(); // دعم التوافق مع القديم
                 if(t.gifts && t.gifts.length > 0) {
                     t.giftName = t.gifts[0].name;
                     t.giftImage = t.gifts[0].image;
@@ -439,8 +446,9 @@
                     tempTables.push({
                         id: 't_' + Date.now() + '_' + i,
                         number: i + 1,
+                        customName: (i + 1).toString(), // إضافة الحقل الجديد للاسم
                         color: colors[i % colors.length].val,
-                        shape: 'circle', // إضافة الشكل الافتراضي
+                        shape: 'circle', 
                         seatsCount: '',
                         hasGift: false,
                         giftName: '',
@@ -489,7 +497,10 @@
                 const html = `
                     <div class="bg-white p-5 rounded-xl shadow-sm border-2 transition-colors duration-300" style="border-top-color: ${table.color}; border-top-width: 4px;">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
-                            <h4 class="font-bold text-lg"><i class="fa-solid fa-layer-group text-xs ml-1" style="color:${table.color}"></i> مجموعة رقم ${table.number}</h4>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group text-xs" style="color:${table.color}"></i>
+                                <input type="text" value="${table.customName || table.number}" onchange="updateTableTemp(${index}, 'customName', this.value)" class="font-bold text-lg border-b-2 border-dashed border-gray-300 focus:border-primary focus:outline-none px-1 w-32 bg-transparent transition" placeholder="اسم المجموعة">
+                            </div>
                             <div class="flex items-center bg-gray-50 p-1.5 rounded-full border border-gray-200 space-x-1 space-x-reverse">
                                 ${colorStrip}
                             </div>
@@ -698,12 +709,14 @@
 
                 const currentShape = table.shape || 'circle';
                 const center = document.createElement('div');
+                const displayName = table.customName || table.number; // استخدام الاسم المخصص
+                
                 center.className = 'table-center';
                 center.style.backgroundColor = table.color;
                 
                 // تصميم مؤشر المجموعة بناءً على الشكل
                 if (['circle', 'square', 'rectangle'].includes(currentShape)) {
-                    center.innerHTML = `${table.number}`;
+                    center.innerHTML = `${displayName}`;
                     if (currentShape === 'square') {
                         center.style.borderRadius = '12px';
                         center.style.width = '90px'; center.style.height = '90px';
@@ -716,7 +729,7 @@
                     }
                 } else {
                     // صف، مدرج، حرف U
-                    center.innerHTML = `<i class="fa-solid fa-grip-vertical mr-2 text-xs opacity-70"></i> مجموعة ${table.number}`;
+                    center.innerHTML = `<i class="fa-solid fa-grip-vertical mr-2 text-xs opacity-70"></i> ${displayName}`;
                     center.style.borderRadius = '15px';
                     center.style.width = 'auto';
                     center.style.padding = '0 15px';
@@ -929,7 +942,8 @@
 
         function openTableModal(tableId) {
             const table = currentEvent.tables.find(t => t.id === tableId);
-            document.getElementById('modal-table-title').innerHTML = `<i class="fa-solid fa-circle text-sm ml-2" style="color:${table.color}"></i> قائمة مجموعة رقم ${table.number}`;
+            const displayName = table.customName || table.number;
+            document.getElementById('modal-table-title').innerHTML = `<i class="fa-solid fa-circle text-sm ml-2" style="color:${table.color}"></i> قائمة ${displayName}`;
             renderTableModalContent(table);
             document.getElementById('modal-table').classList.remove('hidden');
         }
@@ -1027,15 +1041,17 @@
             });
 
             if (foundItems.length > 0) {
-                resultsBox.innerHTML = foundItems.map(item => `
+                resultsBox.innerHTML = foundItems.map(item => {
+                    const displayName = item.table.customName || item.table.number;
+                    return `
                     <li onclick="focusOnGuest('${item.guest.id}')" class="px-4 py-3 border-b border-gray-50 hover:bg-blue-50 cursor-pointer flex justify-between items-center transition">
                         <div>
                             <span class="font-bold text-gray-800">${item.guest.name}</span>
                             ${item.guest.title ? `<span class="text-xs text-gray-500 mr-2">- ${item.guest.title}</span>` : ''}
                         </div>
-                        <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">رقم ${item.table.number}</span>
+                        <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">${displayName}</span>
                     </li>
-                `).join('');
+                `}).join('');
                 resultsBox.classList.remove('hidden');
             } else {
                 resultsBox.innerHTML = '<li class="px-4 py-3 text-gray-500 text-center text-sm">لا توجد نتائج مطابقة</li>';
@@ -1065,10 +1081,11 @@
                 card.className = "bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden";
                 const presentCount = table.guests.filter(g=>g.present && !g.isEmpty).length;
                 const totalNames = table.guests.filter(g=>!g.isEmpty).length;
+                const displayName = table.customName || table.number;
 
                 let html = `
                     <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center" style="border-top: 4px solid ${table.color}">
-                        <h4 class="font-bold text-gray-800">مجموعة رقم ${table.number}</h4>
+                        <h4 class="font-bold text-gray-800">${displayName}</h4>
                         <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded font-bold">${presentCount} / ${totalNames} حضور</span>
                     </div>
                     <div class="p-0 overflow-x-auto max-h-60 overflow-y-auto">
@@ -1138,7 +1155,7 @@
                     if (g.isEmpty) return; 
                     const date = currentEvent.date;
                     const eventName = `"${currentEvent.name}"`;
-                    const tNum = t.number;
+                    const tNum = `"${t.customName || t.number}"`;
                     const name = `"${g.name}"`;
                     const title = `"${g.title || ''}"`;
                     const present = g.present ? "حاضر" : "غائب";
